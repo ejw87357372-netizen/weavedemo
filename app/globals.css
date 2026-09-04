@@ -95,12 +95,21 @@ a { color: inherit; text-decoration: none; }
 
 .container { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
 
-/* 내비게이션 — 떠 있는 알약 형태 */
-.nav {
+/* 내비게이션 — 알약 형태
+   .is-fixed : 메인 페이지. 화면 상단에 고정되어 따라다닙니다
+   .is-static: 그 외 페이지. 문서 흐름에 있어 스크롤하면 같이 올라갑니다 */
+.nav { display: flex; justify-content: center; }
+.nav.is-fixed {
   position: fixed; inset: 14px 0 auto; z-index: 50;
-  display: flex; justify-content: center;
   padding: 0 14px; pointer-events: none;
 }
+.nav.is-static {
+  position: static;
+  padding: 22px 14px 0;
+  margin-bottom: 48px;
+}
+/* 고정일 때 첫 화면이 가려지지 않도록 자리를 대신 차지하는 빈 칸 */
+.nav-spacer { height: 124px; }
 .nav-inner {
   pointer-events: auto;
   display: flex; align-items: center; gap: 0;
@@ -142,11 +151,10 @@ a { color: inherit; text-decoration: none; }
   box-shadow: 0 8px 22px color-mix(in srgb, var(--brand) 42%, transparent);
 }
 
-/* 상단바가 fixed라 첫 화면이 가려지지 않도록 여백 */
-body { padding-top: 84px; }
-
 @media (max-width: 860px) {
-  .nav { inset: 10px 0 auto; padding: 0 10px; }
+  .nav.is-fixed { inset: 10px 0 auto; padding: 0 10px; }
+  .nav.is-static { padding: 16px 10px 0; margin-bottom: 34px; }
+  .nav-spacer { height: 88px; }
   .nav-inner { padding-left: 14px; }
   .nav-logo { margin-right: 8px; }
   .nav-links {
@@ -281,6 +289,20 @@ select {
 }
 .hero-light .grain { opacity: 0.14; mix-blend-mode: multiply; }
 /* 아주 느리게 흐르는 오로라 */
+/* 히어로 맨 뒤에 깔리는 Weave 마크 입자 베일 */
+.weave-veil {
+  position: absolute; inset: 0; z-index: -1;
+  width: 100%; height: 100%;
+  pointer-events: none; display: block;
+  mask-image: radial-gradient(78% 62% at 50% 40%, #000 30%, transparent 82%);
+  -webkit-mask-image: radial-gradient(78% 62% at 50% 40%, #000 30%, transparent 82%);
+  /* 입자 색 — 밝은 배경에서는 흰색이 보이지 않으므로 옅은 브랜드색을 쓴다 */
+  color: rgba(43, 76, 134, 0.30);
+}
+@media (prefers-color-scheme: dark) {
+  .weave-veil { color: rgba(255, 255, 255, 0.55); }
+}
+
 .aurora { position: absolute; inset: -20% -10%; z-index: -1; pointer-events: none; filter: blur(58px); }
 .aurora i {
   position: absolute; display: block; border-radius: 50%; opacity: 0.38;
@@ -566,41 +588,47 @@ select {
 }
 .section-head p { color: var(--ink-2); font-size: 15.5px; max-width: 660px; margin: 0; }
 
-.process { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
-@media (max-width: 900px) { .process { grid-template-columns: repeat(3, 1fr); } }
-@media (max-width: 520px) { .process { grid-template-columns: repeat(2, 1fr); } }
-.step {
-  background: var(--surface-1); border: 1px solid var(--border);
-  border-radius: 14px; padding: 18px 16px; position: relative;
+/* 연구 프로세스 — 완료된 5단계 타임라인 */
+.process { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; }
+.step { position: relative; padding: 0 22px 0 0; }
+/* 단계를 잇는 가로선 */
+.step::before {
+  content: ""; position: absolute; left: 30px; right: 0; top: 14px; height: 2px;
+  background: color-mix(in srgb, var(--brand) 20%, transparent);
 }
-.step .no {
-  font-size: 11.5px; font-weight: 700; color: var(--brand-soft);
-  letter-spacing: 0.6px;
+.step:last-child::before { display: none; }
+.step-dot {
+  position: relative; z-index: 1;
+  width: 30px; height: 30px; border-radius: 50%;
+  display: grid; place-items: center; flex: none;
+  background: var(--brand); color: var(--page);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 11%, transparent),
+              0 5px 14px color-mix(in srgb, var(--brand) 26%, transparent);
 }
-.step strong { display: block; font-size: 14px; margin: 6px 0 4px; letter-spacing: -0.3px; }
-.step span { font-size: 12.5px; color: var(--ink-muted); line-height: 1.5; }
-.step { transition: transform 0.35s cubic-bezier(0.22, 0.8, 0.3, 1), box-shadow 0.35s ease; }
-.step:hover { transform: translateY(-3px); box-shadow: 0 18px 36px -26px rgba(18, 32, 58, 0.38); }
-.step.done { background: color-mix(in srgb, var(--brand) 6%, var(--surface-1)); border-color: color-mix(in srgb, var(--brand) 22%, transparent); }
-.step.done .no { color: var(--brand); }
+.step-dot svg { width: 15px; height: 15px; }
+.step-body { margin-top: 16px; }
+.step-no {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.7px;
+  color: var(--brand-soft); text-transform: uppercase;
+}
+.step strong { display: block; font-size: 14.5px; margin: 5px 0 5px; letter-spacing: -0.3px; }
+.step span { display: block; font-size: 12.5px; color: var(--ink-muted); line-height: 1.55; }
 
-/* 진행 중 단계 — 브랜드 테두리 + 숨쉬는 점 */
-.step.now {
-  border-color: var(--brand);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 12%, transparent);
+@media (max-width: 900px) {
+  /* 좁은 화면에서는 세로 타임라인 */
+  .process { grid-template-columns: 1fr; }
+  .step {
+    display: grid; grid-template-columns: 30px 1fr; column-gap: 16px;
+    padding: 0 0 24px 0;
+  }
+  .step::before {
+    left: 14px; right: auto; top: 34px; bottom: -4px;
+    width: 2px; height: auto;
+  }
+  .step:last-child { padding-bottom: 0; }
+  .step-body { margin-top: 3px; }
 }
-.step.now .no { color: var(--brand); display: flex; align-items: center; gap: 8px; }
-.now-badge {
-  display: inline-flex; align-items: center; gap: 5px;
-  font-style: normal; font-size: 10.5px; font-weight: 700; color: #fff;
-  background: var(--brand); border-radius: 999px; padding: 2px 9px 2px 7px;
-}
-.now-badge i {
-  width: 6px; height: 6px; border-radius: 999px; background: #fff;
-  animation: nowPulse 1.6s ease-in-out infinite;
-}
-@keyframes nowPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
-@media (prefers-reduced-motion: reduce) { .now-badge i { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .step, .step-dot { transition: none; } }
 
 .feature-card {
   position: relative; overflow: hidden;
