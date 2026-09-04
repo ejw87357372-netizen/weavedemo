@@ -695,12 +695,22 @@ function Matching({ team, setTeam, confirmed, setConfirmed, setExcludeTarget, ch
 
       <Card title="AI 추천 팀 구성안 (규칙 기반 가상 추천)"
             tone={lateCount ? "warn" : ""}>
-        <table className="tc-table lines">
+        <div className="tc-tablewrap">
+        <table className="tc-table lines tc-team">
+          <colgroup>
+            <col style={{ width: "11%" }} />
+            <col style={{ width: "14%" }} />
+            <col style={{ width: "20%" }} />
+            <col style={{ width: "24%" }} />
+            <col style={{ width: "12%" }} />
+            <col style={{ width: "9%" }} />
+            <col style={{ width: "10%" }} />
+          </colgroup>
           <thead>
             <tr>
               <th>역할</th><th>후보</th><th>추천 이유</th>
               <th>현재 업무 · 투입 가능</th><th>보완 필요</th>
-              <th>SME 검토</th><th>참여의사</th><th></th>
+              <th>SME 검토</th><th>참여의사</th>
             </tr>
           </thead>
           <tbody>
@@ -716,34 +726,32 @@ function Matching({ team, setTeam, confirmed, setConfirmed, setExcludeTarget, ch
                   <td>{m.why}</td>
                   <td>
                     {w
-                      ? <div className="muted small">{w.task} · 업무 비중 {w.load}% · {w.until} 종료</div>
+                      ? <div className="muted small">{w.task}<br />업무 비중 {w.load}% · {w.until} 종료</div>
                       : <div className="muted small">현재 배정된 프로젝트 없음</div>}
-                    <div>
+                    <div style={{ marginTop: 4 }}>
                       <span className={`tc-badge ${late ? "orange" : "mint"}`}>
-                        {late ? `착수 후 투입 (${e.available})` : `투입 가능 ${e.available}`}
+                        {late ? `착수 후 ${e.available}` : `투입 가능 ${e.available}`}
                       </span>
                     </div>
                   </td>
                   <td>{m.gap}</td>
                   <td>
                     {sme
-                      ? <button className="tc-btn tiny ghost" onClick={() => openSme(m)}>
-                          <span className={`tc-badge ${sme.verdict === "부적합" ? "orange" : "mint"}`}>{sme.verdict}</span>
-                          <div className="muted small">{sme.by} · 의견 보기</div>
-                        </button>
-                      : <button className="tc-btn tiny" onClick={() => openSme(m)}>검토하기</button>}
+                      ? <span className={`tc-badge ${sme.verdict === "부적합" ? "orange" : "mint"}`}>{sme.verdict}</span>
+                      : <span className="tc-badge">검토 대기</span>}
                   </td>
-                  <td>
+                  <td className="tc-acts">
                     {confirmed[m.id]
                       ? <span className="tc-badge mint">확인됨</span>
                       : <button className="tc-btn tiny" onClick={() => { setConfirmed((c) => ({ ...c, [m.id]: true })); toast(`${e.name}님에게 참여의사 확인 요청을 보냈습니다. (데모: 즉시 확인됨)`); }}>의사 확인</button>}
+                    <button className="tc-btn tiny ghost" onClick={() => setExcludeTarget(m)}>제외</button>
                   </td>
-                  <td><button className="tc-btn tiny ghost" onClick={() => setExcludeTarget(m)}>제외</button></td>
                 </tr>
               );
             })}
           </tbody>
         </table>
+        </div>
         {lateCount > 0 && (
           <p className="tc-p warn-text">
             {lateCount}명은 현재 업무가 착수일({PROJECT.start}) 이후에 끝납니다. 투입 시점을 조정하거나 후보를 교체해야 합니다.
@@ -760,7 +768,7 @@ function Matching({ team, setTeam, confirmed, setConfirmed, setExcludeTarget, ch
       <Card title="직무 전문가(SME) 검토" tone={smeAll ? "mint" : "warn"}>
         <p className="tc-p">
           AI가 제시한 추천 근거를 해당 직무를 아는 사람이 한 번 더 확인하는 단계입니다.
-          역할별로 검토자가 지정되어 있고, 전원 검토를 마쳐야 최종 검토를 요청할 수 있습니다.
+          역할별로 검토자가 지정되어 있고, 아래에서 검토를 진행합니다. 전원 검토를 마쳐야 최종 검토를 요청할 수 있습니다.
         </p>
         <table className="tc-table lines">
           <thead><tr><th>역할</th><th>대상</th><th>지정 검토자</th><th>판정</th><th>검토 의견</th></tr></thead>
@@ -1765,6 +1773,8 @@ const CSS = `
 .tc-card.warn { border-color: rgba(201,106,60,0.45); }
 .tc-card.mint { border-color: rgba(46,139,118,0.45); }
 .tc-p.warn-text { color: #b45f22; font-weight: 600; }
+.tc-team td { vertical-align: top; }
+.tc-acts { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .tc-sme-box { background: var(--surface-2); border-radius: 12px; padding: 14px 16px; margin: 10px 0 16px; }
 .tc-sme-verdicts { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 14px; }
 .tc-sme-v { border: 1px solid var(--axis); border-radius: 999px; padding: 7px 14px; cursor: pointer; }
