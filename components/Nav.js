@@ -17,7 +17,7 @@ export default function Nav() {
   const active = (href) => path === href || (href !== "/" && path.startsWith(href));
   return (
     <nav className="nav">
-      <div className="container nav-inner">
+      <div className="nav-inner">
         <Link href="/" className="nav-logo">
           <Mark size={20} style={{ verticalAlign: "-4px", marginRight: 8, color: "var(--series-1)" }} />
           <span>Weave</span>
@@ -29,6 +29,7 @@ export default function Nav() {
             </Link>
           ))}
         </div>
+        <Link href="/survey" className="nav-cta">수용성 진단</Link>
       </div>
     </nav>
   );
