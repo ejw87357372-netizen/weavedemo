@@ -15,8 +15,13 @@ const LINKS = [
 export default function Nav() {
   const path = usePathname();
   const active = (href) => path === href || (href !== "/" && path.startsWith(href));
+
+  /* 메인 페이지에서만 상단 고정. 상세 페이지에서는 스크롤과 함께 올라갑니다 */
+  const fixed = path === "/";
+
   return (
-    <nav className="nav">
+    <>
+    <nav className={fixed ? "nav is-fixed" : "nav is-static"}>
       <div className="nav-inner">
         <Link href="/" className="nav-logo">
           <Mark size={20} style={{ verticalAlign: "-4px", marginRight: 8, color: "var(--series-1)" }} />
@@ -32,5 +37,7 @@ export default function Nav() {
         <Link href="/survey" className="nav-cta">수용성 진단</Link>
       </div>
     </nav>
+    {fixed && <div className="nav-spacer" aria-hidden="true" />}
+    </>
   );
 }
