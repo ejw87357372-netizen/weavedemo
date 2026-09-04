@@ -588,47 +588,98 @@ select {
 }
 .section-head p { color: var(--ink-2); font-size: 15.5px; max-width: 660px; margin: 0; }
 
-/* 연구 프로세스 — 완료된 5단계 타임라인 */
-.process { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; }
-.step { position: relative; padding: 0 22px 0 0; }
-/* 단계를 잇는 가로선 */
+/* 연구 프로세스 — 다섯 단계가 모두 끝난 타임라인 */
+.process { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0 14px; }
+.step { position: relative; padding-top: 48px; }
+.step:nth-child(1) { --i: 0; }
+.step:nth-child(2) { --i: 1; }
+.step:nth-child(3) { --i: 2; }
+.step:nth-child(4) { --i: 3; }
+.step:nth-child(5) { --i: 4; }
+
+/* 이 노드에서 다음 노드까지 잇는 레일 */
 .step::before {
-  content: ""; position: absolute; left: 30px; right: 0; top: 14px; height: 2px;
-  background: color-mix(in srgb, var(--brand) 20%, transparent);
+  content: ""; position: absolute; top: 14px; left: 50%; right: calc(-50% - 14px); height: 3px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--brand) 52%, transparent);
+  transform-origin: left center;
 }
 .step:last-child::before { display: none; }
+
+/* 가운데 정렬된 체크 노드 */
 .step-dot {
-  position: relative; z-index: 1;
+  position: absolute; top: 0; left: 50%; z-index: 1;
+  transform: translateX(-50%);
   width: 30px; height: 30px; border-radius: 50%;
-  display: grid; place-items: center; flex: none;
+  display: grid; place-items: center;
   background: var(--brand); color: var(--page);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 11%, transparent),
-              0 5px 14px color-mix(in srgb, var(--brand) 26%, transparent);
+  box-shadow: 0 0 0 5px var(--page),
+              0 4px 12px color-mix(in srgb, var(--brand) 34%, transparent);
 }
 .step-dot svg { width: 15px; height: 15px; }
-.step-body { margin-top: 16px; }
+
+/* 글래스 카드 — 상단바와 같은 유리 토큰을 쓴다 */
+.step-body {
+  text-align: center;
+  padding: 17px 15px 19px; border-radius: 16px;
+  background: var(--nav-bg);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid var(--nav-edge);
+  box-shadow: var(--nav-shadow);
+}
 .step-no {
   font-size: 11px; font-weight: 700; letter-spacing: 0.7px;
   color: var(--brand-soft); text-transform: uppercase;
 }
-.step strong { display: block; font-size: 14.5px; margin: 5px 0 5px; letter-spacing: -0.3px; }
+.step strong { display: block; font-size: 14.5px; margin: 5px 0; letter-spacing: -0.3px; }
 .step span { display: block; font-size: 12.5px; color: var(--ink-muted); line-height: 1.55; }
 
-@media (max-width: 900px) {
-  /* 좁은 화면에서는 세로 타임라인 */
-  .process { grid-template-columns: 1fr; }
-  .step {
-    display: grid; grid-template-columns: 30px 1fr; column-gap: 16px;
-    padding: 0 0 24px 0;
-  }
-  .step::before {
-    left: 14px; right: auto; top: 34px; bottom: -4px;
-    width: 2px; height: auto;
-  }
-  .step:last-child { padding-bottom: 0; }
-  .step-body { margin-top: 3px; }
+/* 스크롤로 들어오면 노드 → 카드 → 레일 순서로 하나씩 */
+.reveal .step-dot { opacity: 0; transform: translateX(-50%) scale(0.4); }
+.reveal .step-body { opacity: 0; transform: translateY(16px); }
+.reveal .step::before { transform: scaleX(0); }
+
+.reveal.in .step-dot {
+  opacity: 1; transform: translateX(-50%) scale(1);
+  transition: opacity 0.35s ease, transform 0.5s cubic-bezier(0.2, 1.35, 0.4, 1);
+  transition-delay: calc(0.05s + var(--i) * 0.26s);
 }
-@media (prefers-reduced-motion: reduce) { .step, .step-dot { transition: none; } }
+.reveal.in .step-body {
+  opacity: 1; transform: none;
+  transition: opacity 0.5s ease, transform 0.55s cubic-bezier(0.22, 0.8, 0.3, 1);
+  transition-delay: calc(0.14s + var(--i) * 0.26s);
+}
+.reveal.in .step::before {
+  transform: scaleX(1);
+  transition: transform 0.42s cubic-bezier(0.4, 0, 0.2, 1);
+  transition-delay: calc(0.24s + var(--i) * 0.26s);
+}
+.reveal.in .step:hover .step-body { transform: translateY(-3px); transition-delay: 0s; }
+
+/* 좁은 화면에서는 세로 타임라인 */
+@media (max-width: 900px) {
+  .process { grid-template-columns: 1fr; gap: 0; }
+  .step { padding: 0 0 18px 50px; }
+  .step::before {
+    top: 32px; bottom: -4px; left: 14px; right: auto;
+    width: 3px; height: auto;
+    transform-origin: center top;
+  }
+  .reveal .step::before { transform: scaleY(0); }
+  .reveal.in .step::before { transform: scaleY(1); }
+  .step-dot { left: 0; transform: none; }
+  .reveal .step-dot { transform: scale(0.4); }
+  .reveal.in .step-dot { transform: scale(1); }
+  .step-body { text-align: left; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal .step-dot, .reveal.in .step-dot { opacity: 1; transform: translateX(-50%); transition: none; }
+  .reveal .step-body, .reveal.in .step-body { opacity: 1; transform: none; transition: none; }
+  .reveal .step::before, .reveal.in .step::before { transform: scaleX(1); transition: none; }
+  .reveal.in .step:hover .step-body { transform: none; }
+}
 
 .feature-card {
   position: relative; overflow: hidden;
