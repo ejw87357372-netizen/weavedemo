@@ -590,7 +590,7 @@ select {
 
 /* 연구 프로세스 — 다섯 단계가 모두 끝난 타임라인 */
 .process { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0 14px; }
-.step { position: relative; padding-top: 48px; }
+.step { position: relative; padding-top: 48px; display: flex; flex-direction: column; }
 .step:nth-child(1) { --i: 0; }
 .step:nth-child(2) { --i: 1; }
 .step:nth-child(3) { --i: 2; }
@@ -620,6 +620,7 @@ select {
 
 /* 글래스 카드 — 상단바와 같은 유리 토큰을 쓴다 */
 .step-body {
+  flex: 1 1 auto;              /* 칸마다 설명 길이가 달라도 카드 높이는 같게 */
   text-align: center;
   padding: 17px 15px 19px; border-radius: 16px;
   background: var(--nav-bg);
