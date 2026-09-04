@@ -5,14 +5,15 @@ import { TARGET_ROLES } from "@/lib/skillcheck";
 import { OntologyGraph, Heatmap, HBarChart } from "@/components/charts";
 import Reveal from "@/components/Reveal";
 import HeroMark from "@/components/HeroMark";
+import WeaveVeil from "@/components/WeaveVeil";
 
 // status: "done" 완료 · "now" 진행 중 · "todo" 예정 — 단계가 바뀌면 여기만 고치면 된다
 const PROCESS = [
   ["01", "문헌 검토", "UTAUT·프라이버시·알고리즘 공정성 선행연구", "done"],
   ["02", "프로토타입", "수용성·스킬 진단 웹 도구 구현", "done"],
   ["03", "심층 인터뷰", "인사·인적자원개발 담당자 대상 질적 조사", "done"],
-  ["04", "설문조사", "도입 전 구성원 수용 요인, 목표 150명", "now"],
-  ["05", "분석·제언", "위계적 회귀 후 시스템 구축 방향 도출", "todo"],
+  ["04", "설문조사", "도입 전 구성원 수용 요인, 목표 150명", "done"],
+  ["05", "분석·제언", "위계적 회귀 후 시스템 구축 방향 도출", "done"],
 ];
 
 const FEATURES = [
@@ -32,6 +33,7 @@ export default function Home() {
     <>
       {/* ── 히어로 ── */}
       <section className="hero-light">
+        <WeaveVeil />
         <div className="aurora"><i /><i /><i /></div>
         <div className="grain" />
         <div className="hero-inner">
@@ -101,18 +103,22 @@ export default function Home() {
       <Reveal>
         <div className="section-head">
           <div className="eyebrow">Research Process</div>
-          <h2>연구는 다섯 단계로 진행됩니다</h2>
-          <p className="one-line" style={{ maxWidth: "none" }}>심층 인터뷰를 마치고 지금은 설문조사를 진행하는 단계입니다. 조사가 끝나면 분석 결과를 바탕으로 시스템 구축 방향을 제시합니다.</p>
+          <h2>연구는 다섯 단계로 진행되었습니다</h2>
         </div>
         <div className="process">
-          {PROCESS.map(([no, title, desc, status]) => (
-            <div key={no} className={`step ${status}`}>
-              <div className="no">
-                {no}{status === "done" && " ✓"}
-                {status === "now" && <em className="now-badge"><i />진행 중</em>}
+          {PROCESS.map(([no, title, desc]) => (
+            <div key={no} className="step">
+              <span className="step-dot">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"
+                     strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M5 12.5l4.5 4.5L19 7" />
+                </svg>
+              </span>
+              <div className="step-body">
+                <div className="step-no">Step {no}</div>
+                <strong>{title}</strong>
+                <span>{desc}</span>
               </div>
-              <strong>{title}</strong>
-              <span>{desc}</span>
             </div>
           ))}
         </div>
