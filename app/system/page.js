@@ -8,6 +8,7 @@ import {
   EMPLOYEES, PROJECT, SEARCH_RESULTS, TEAM_INIT, ALTERNATES,
   GAPS, GAPS_BY_ROLE, PATHS, RETENTION, empById,
   INTERVIEW_REQS, DECISIONS, BLIND_SPOTS, ROLE_FAMILY, FAMILY_RISK,
+  workOf, smeOf,
 } from "@/lib/tcData";
 import { RiskQuadrant } from "@/components/charts";
 
@@ -51,6 +52,13 @@ export default function System() {
     setToasts((t) => [...t, { id, msg }].slice(-3));   // 최대 3개까지만 쌓이게
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3200);
   };
+
+  // SME(직무 전문가) 검토 상태 — { [empId]: { by, at, verdict, note } }
+  const [smeDone, setSmeDone] = useState({});
+  const [smeTarget, setSmeTarget] = useState(null);   // 검토 모달 대상
+  const [decisionLog, setDecisionLog] = useState([]);  // 이번 세션에 기록된 결정
+  const [smeVerdict, setSmeVerdict] = useState("적합");
+  const [smeNote, setSmeNote] = useState("");
 
   // 인재 탐색
   const [searched, setSearched] = useState(false);
@@ -149,7 +157,8 @@ export default function System() {
           {screen === "matching" && (
             <Matching team={team} setTeam={setTeam} confirmed={confirmed} setConfirmed={setConfirmed}
                       setExcludeTarget={setExcludeTarget} checks={checks} setChecks={setChecks}
-                      placed={placed} setPlaced={setPlaced} toast={toast} />
+                      placed={placed} setPlaced={setPlaced} toast={toast}
+                      smeDone={smeDone} openSme={(m) => { setSmeTarget(m); setSmeVerdict("적합"); setSmeNote(""); }} />
           )}
           {screen === "profile" && (
             <Profile me={me} wantRole={wantRole} setWantRole={setWantRole}
@@ -161,7 +170,7 @@ export default function System() {
           {screen === "career" && <Career pathSel={pathSel} setPathSel={setPathSel} toast={toast} />}
           {screen === "profiles" && <Profiles />}
           {screen === "skillgap" && <SkillGap />}
-          {screen === "decisions" && <Decisions />}
+          {screen === "decisions" && <Decisions extra={decisionLog} />}
           {screen === "sim" && <Simulation />}
           {screen === "retention" && <Retention />}
           {screen === "fairness" && <Fairness toast={toast} />}
@@ -177,10 +186,60 @@ export default function System() {
         </Modal>
       )}
 
+      {/* ── 직무 전문가(SME) 검토 모달 ── */}
+      {smeTarget && (() => {
+        const e = empById(smeTarget.id);
+        const w = workOf(smeTarget.id);
+        const by = smeOf(smeTarget.slot);
+        return (
+          <Modal onClose={() => setSmeTarget(null)} title={`직무 전문가 검토 · ${e.name} (${smeTarget.slot})`}>
+            <p className="tc-p muted">검토자: {by} · 이 화면은 추천을 승인하는 곳이 아니라, 추천 근거가 현업 기준에 맞는지 확인하는 곳입니다.</p>
+
+            <div className="tc-sme-box">
+              <dl className="tc-dl wide">
+                <div><dt>AI 추천 이유</dt><dd>{smeTarget.why}</dd></div>
+                <div><dt>보완 필요</dt><dd>{smeTarget.gap}</dd></div>
+                <div><dt>현재 업무</dt><dd>{w ? `${w.task} · 업무 비중 ${w.load}% · ${w.until} 종료` : "배정된 프로젝트 없음"}</dd></div>
+                <div><dt>투입 가능</dt><dd>{e.available}</dd></div>
+                <div><dt>보유 기술</dt><dd>{e.skills.map(([sk, lv]) => `${sk} ${lv}/5`).join(" · ")}</dd></div>
+                <div><dt>수행 프로젝트</dt><dd>{e.projects.join(", ")}</dd></div>
+              </dl>
+            </div>
+
+            <p className="tc-p"><b>검토 결과</b></p>
+            <div className="tc-sme-verdicts">
+              {["적합", "조건부 적합", "부적합"].map((v) => (
+                <label key={v} className={`tc-check tc-sme-v${smeVerdict === v ? " on" : ""}`}>
+                  <input type="radio" name="smeVerdict" checked={smeVerdict === v}
+                         onChange={() => setSmeVerdict(v)} /> {v}
+                </label>
+              ))}
+            </div>
+
+            <p className="tc-p"><b>검토 의견</b> <span className="muted small">기록으로 남고, 결정 기록에서 함께 확인됩니다</span></p>
+            <textarea className="tc-input" rows={3} value={smeNote}
+                      onChange={(ev) => setSmeNote(ev.target.value)}
+                      placeholder={smeVerdict === "부적합"
+                        ? "예: 요구 스택은 맞지만 해당 도메인 경험이 없어 초기 3개월 리스크가 큽니다"
+                        : "예: 추천 근거는 타당하나 데이터 모델링은 착수 전 교육 이수 조건이 필요합니다"} />
+
+            <div className="tc-row-end">
+              <button className="tc-btn ghost" onClick={() => setSmeTarget(null)}>취소</button>
+              <button className="tc-btn primary" disabled={!smeNote.trim()} onClick={() => {
+                setSmeDone((d) => ({ ...d, [smeTarget.id]: { by, at: "방금 전", verdict: smeVerdict, note: smeNote.trim() } }));
+                toast(`${by}의 검토 결과가 기록되었습니다: ${e.name} · ${smeVerdict}`);
+                setSmeTarget(null); setSmeNote("");
+              }}>검토 결과 기록</button>
+            </div>
+            <p className="tc-p muted">의견을 입력해야 기록됩니다. 판정만으로는 저장되지 않습니다.</p>
+          </Modal>
+        );
+      })()}
+
       {/* ── 제외 사유 모달 ── */}
       {excludeTarget && (
         <Modal onClose={() => setExcludeTarget(null)} title={`후보 제외 · ${empById(excludeTarget.id).name} (${excludeTarget.slot})`}>
-          <p className="tc-p">제외 사유를 남기면 공정성 센터의 추천 이력에 기록됩니다.</p>
+          <p className="tc-p">AI 추천과 다른 결정을 하는 것입니다. 사유를 남겨야 진행되며, 남긴 사유는 <b>결정 기록</b>에 그대로 저장되어 나중에 누구나 확인할 수 있습니다.</p>
           <textarea className="tc-input" rows={3} value={excludeReason}
                     onChange={(e) => setExcludeReason(e.target.value)}
                     placeholder="예: 해당 기간 타 프로젝트 투입 확정" />
@@ -188,10 +247,18 @@ export default function System() {
             <button className="tc-btn ghost" onClick={() => setExcludeTarget(null)}>취소</button>
             <button className="tc-btn primary" disabled={!excludeReason.trim()} onClick={() => {
               const alt = ALTERNATES[excludeTarget.slot];
+              const sme = smeDone[excludeTarget.id];
               setTeam((t) => t.map((m) => m === excludeTarget
                 ? { ...m, id: alt, why: "대체 후보(규칙 기반 재추천)", gap: "요구역량 재검토 필요", replaced: true }
                 : m));
-              toast(`${empById(excludeTarget.id).name} 제외: 사유가 기록되고 대체 후보를 추천했습니다.`);
+              setDecisionLog((L) => [{
+                date: "오늘", project: PROJECT.name, slot: excludeTarget.slot,
+                rec: excludeTarget.id, final: alt, match: false, cat: "담당자 판단",
+                reason: excludeReason.trim(),
+                sme: sme ? `${sme.by}: ${sme.verdict} — ${sme.note}` : null,
+                by: "인사 담당자 (데모 계정)", fresh: true,
+              }, ...L]);
+              toast(`${empById(excludeTarget.id).name} 제외: 사유가 결정 기록에 남았습니다.`);
               setExcludeTarget(null); setExcludeReason("");
             }}>제외하고 다른 후보 추천</button>
           </div>
@@ -445,15 +512,16 @@ function LevelGuide({ onClose }) {
 }
 
 /* ═══════════ 화면. 결정 기록 (AI 추천 대비 최종 결정) ═══════════ */
-function Decisions() {
+function Decisions({ extra = [] }) {
   const [only, setOnly] = useState(false);
-  const rows = only ? DECISIONS.filter((d) => !d.match) : DECISIONS;
-  const total = DECISIONS.length;
-  const agreed = DECISIONS.filter((d) => d.match).length;
+  const ALL = [...extra, ...DECISIONS];
+  const rows = only ? ALL.filter((d) => !d.match) : ALL;
+  const total = ALL.length;
+  const agreed = ALL.filter((d) => d.match).length;
   const rate = Math.round((agreed / total) * 100);
   // 불일치 사유 유형 분포
   const cats = {};
-  DECISIONS.filter((d) => !d.match).forEach((d) => { cats[d.cat] = (cats[d.cat] || 0) + 1; });
+  ALL.filter((d) => !d.match).forEach((d) => { cats[d.cat] = (cats[d.cat] || 0) + 1; });
   const catRows = Object.entries(cats).sort((a, b) => b[1] - a[1]);
   const nm = (id) => (empById(id) ? empById(id).name : id);
 
@@ -462,6 +530,7 @@ function Decisions() {
       <Notice>
         AI 추천과 다른 결정을 내린 경우 사유를 남기도록 한 기록입니다. 최종 결정은 사람이 하되,
         그 판단도 확인 가능해야 한다는 심층 인터뷰 요구를 반영했습니다.
+        프로젝트 매칭에서 후보를 제외하면 그 사유와 직무 전문가 검토 의견이 이 목록에 바로 쌓입니다.
       </Notice>
 
       <div className="tc-kpis">
@@ -496,14 +565,17 @@ function Decisions() {
             <tbody>
               {rows.map((d, i) => (
                 <tr key={i} className={d.match ? "" : "alt"}>
-                  <td className="muted num">{d.date}</td>
+                  <td className="muted num">{d.date}{d.fresh && <div><span className="tc-badge mint">방금 기록</span></div>}</td>
                   <td className="tl"><b>{d.project}</b><div className="muted small">{d.slot}</div></td>
                   <td>{nm(d.rec)}</td>
                   <td><b>{nm(d.final)}</b></td>
                   <td>{d.match
                     ? <span className="tc-badge mint">일치</span>
                     : <span className="tc-badge orange">{d.cat}</span>}</td>
-                  <td className="tl small">{d.reason || <span className="muted">—</span>}</td>
+                  <td className="tl small">
+                    {d.reason || <span className="muted">—</span>}
+                    {d.sme && <div className="muted small" style={{ marginTop: 4 }}>직무 전문가 검토 · {d.sme}</div>}
+                  </td>
                   <td className="muted small">{d.by}</td>
                 </tr>
               ))}
@@ -603,31 +675,64 @@ function Research({ setScreen }) {
 }
 
 /* ═══════════ 화면 3. 프로젝트 매칭 ═══════════ */
-function Matching({ team, setTeam, confirmed, setConfirmed, setExcludeTarget, checks, setChecks, placed, setPlaced, toast }) {
+function Matching({ team, setTeam, confirmed, setConfirmed, setExcludeTarget, checks, setChecks, placed, setPlaced, toast, smeDone, openSme }) {
   const allChecked = checks.every(Boolean);
+  const smeAll = team.every((m) => smeDone[m.id]);
+  const smeBlocked = team.some((m) => smeDone[m.id] && smeDone[m.id].verdict === "부적합");
+  const lateCount = team.filter((m) => (empById(m.id).available || "") > PROJECT.start).length;
+
   return (
     <>
       <Card title={`프로젝트: ${PROJECT.name}`}>
         <dl className="tc-dl wide">
           <div><dt>기간</dt><dd>{PROJECT.period}</dd></div>
+          <div><dt>착수 예정</dt><dd>{PROJECT.start}</dd></div>
           <div><dt>필요 인원</dt><dd>{PROJECT.headcount}명</dd></div>
           <div><dt>요구역량</dt><dd>{PROJECT.required.join(", ")}</dd></div>
           <div><dt>우대사항</dt><dd>{PROJECT.preferred.join(", ")}</dd></div>
         </dl>
       </Card>
 
-      <Card title="AI 추천 팀 구성안 (규칙 기반 가상 추천)">
+      <Card title="AI 추천 팀 구성안 (규칙 기반 가상 추천)"
+            tone={lateCount ? "warn" : ""}>
         <table className="tc-table lines">
-          <thead><tr><th>역할</th><th>후보</th><th>추천 이유</th><th>보완 필요</th><th>참여의사</th><th></th></tr></thead>
+          <thead>
+            <tr>
+              <th>역할</th><th>후보</th><th>추천 이유</th>
+              <th>현재 업무 · 투입 가능</th><th>보완 필요</th>
+              <th>SME 검토</th><th>참여의사</th><th></th>
+            </tr>
+          </thead>
           <tbody>
             {team.map((m, i) => {
               const e = empById(m.id);
+              const w = workOf(m.id);
+              const late = (e.available || "") > PROJECT.start;
+              const sme = smeDone[m.id];
               return (
                 <tr key={i} className={m.replaced ? "alt" : ""}>
                   <td className="muted">{m.slot}</td>
                   <td><b>{e.name}</b><div className="muted small">{e.dept} · {e.years}년</div></td>
                   <td>{m.why}</td>
+                  <td>
+                    {w
+                      ? <div className="muted small">{w.task} · 업무 비중 {w.load}% · {w.until} 종료</div>
+                      : <div className="muted small">현재 배정된 프로젝트 없음</div>}
+                    <div>
+                      <span className={`tc-badge ${late ? "orange" : "mint"}`}>
+                        {late ? `착수 후 투입 (${e.available})` : `투입 가능 ${e.available}`}
+                      </span>
+                    </div>
+                  </td>
                   <td>{m.gap}</td>
+                  <td>
+                    {sme
+                      ? <button className="tc-btn tiny ghost" onClick={() => openSme(m)}>
+                          <span className={`tc-badge ${sme.verdict === "부적합" ? "orange" : "mint"}`}>{sme.verdict}</span>
+                          <div className="muted small">{sme.by} · 의견 보기</div>
+                        </button>
+                      : <button className="tc-btn tiny" onClick={() => openSme(m)}>검토하기</button>}
+                  </td>
                   <td>
                     {confirmed[m.id]
                       ? <span className="tc-badge mint">확인됨</span>
@@ -639,12 +744,52 @@ function Matching({ team, setTeam, confirmed, setConfirmed, setExcludeTarget, ch
             })}
           </tbody>
         </table>
-        <p className="tc-p muted">후보 제외 시 사유를 기록해야 하며, 규칙 기반으로 대체 후보가 추천됩니다.</p>
+        {lateCount > 0 && (
+          <p className="tc-p warn-text">
+            {lateCount}명은 현재 업무가 착수일({PROJECT.start}) 이후에 끝납니다. 투입 시점을 조정하거나 후보를 교체해야 합니다.
+          </p>
+        )}
+        <p className="tc-p muted">
+          적합도만으로는 배치를 결정할 수 없다는 심층 인터뷰 요구를 반영해, 현재 수행 업무와 잔여 일정을 함께 표시합니다.
+          후보 제외 시 사유를 기록해야 하며, 규칙 기반으로 대체 후보가 추천됩니다.
+        </p>
       </Card>
 
       <BlindSpots />
 
-      <Card title="배치 확정 전 공정성 점검" tone={placed ? "mint" : allChecked ? "" : "warn"}>
+      <Card title="직무 전문가(SME) 검토" tone={smeAll ? "mint" : "warn"}>
+        <p className="tc-p">
+          AI가 제시한 추천 근거를 해당 직무를 아는 사람이 한 번 더 확인하는 단계입니다.
+          역할별로 검토자가 지정되어 있고, 전원 검토를 마쳐야 최종 검토를 요청할 수 있습니다.
+        </p>
+        <table className="tc-table lines">
+          <thead><tr><th>역할</th><th>대상</th><th>지정 검토자</th><th>판정</th><th>검토 의견</th></tr></thead>
+          <tbody>
+            {team.map((m, i) => {
+              const d = smeDone[m.id];
+              return (
+                <tr key={i}>
+                  <td className="muted">{m.slot}</td>
+                  <td>{empById(m.id).name}</td>
+                  <td>{smeOf(m.slot)}</td>
+                  <td>{d
+                    ? <span className={`tc-badge ${d.verdict === "부적합" ? "orange" : "mint"}`}>{d.verdict}</span>
+                    : <span className="tc-badge orange">검토 대기</span>}</td>
+                  <td>{d
+                    ? <span>{d.note}<div className="muted small">{d.by} · {d.at}</div></span>
+                    : <button className="tc-btn tiny" onClick={() => openSme(m)}>검토하기</button>}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        <p className="tc-p muted">
+          SME 검토는 추천을 승인하는 절차가 아니라, 추천 근거가 현업 기준에 맞는지 확인하는 절차입니다.
+          검토 의견과 검토자는 결정 기록에 함께 남습니다.
+        </p>
+      </Card>
+
+      <Card title="배치 확정 전 공정성 점검" tone={placed ? "mint" : allChecked && smeAll && !smeBlocked ? "" : "warn"}>
         {CHECKS.map((c, i) => (
           <label key={i} className="tc-check">
             <input type="checkbox" checked={checks[i]}
@@ -654,12 +799,14 @@ function Matching({ team, setTeam, confirmed, setConfirmed, setExcludeTarget, ch
         <div className="tc-row-end">
           {placed
             ? <span className="tc-badge mint big">최종 검토 완료: 배치안이 인사 담당자에게 전달되었습니다</span>
-            : <button className="tc-btn primary" disabled={!allChecked}
-                      onClick={() => { setPlaced(true); toast("공정성 점검을 통과했습니다. 최종 결정은 담당자 검토로 확정됩니다."); }}>
+            : <button className="tc-btn primary" disabled={!allChecked || !smeAll || smeBlocked}
+                      onClick={() => { setPlaced(true); toast("공정성 점검과 SME 검토를 통과했습니다. 최종 결정은 담당자 검토로 확정됩니다."); }}>
                 관리자 최종검토 요청
               </button>}
         </div>
-        {!allChecked && !placed && <p className="tc-p warn-text">모든 점검 항목을 확인해야 최종 검토를 요청할 수 있습니다.</p>}
+        {!placed && !allChecked && <p className="tc-p warn-text">모든 점검 항목을 확인해야 최종 검토를 요청할 수 있습니다.</p>}
+        {!placed && allChecked && !smeAll && <p className="tc-p warn-text">직무 전문가 검토가 남아 있습니다. 전원 검토 후 요청할 수 있습니다.</p>}
+        {!placed && smeBlocked && <p className="tc-p warn-text">&lsquo;부적합&rsquo; 판정이 있습니다. 해당 후보를 제외하고 대체 후보를 받은 뒤 다시 요청하세요.</p>}
       </Card>
     </>
   );
@@ -1617,6 +1764,11 @@ const CSS = `
 .tc-card h3 { margin: 0 0 12px; font-size: 15px; letter-spacing: -0.3px; }
 .tc-card.warn { border-color: rgba(201,106,60,0.45); }
 .tc-card.mint { border-color: rgba(46,139,118,0.45); }
+.tc-p.warn-text { color: #b45f22; font-weight: 600; }
+.tc-sme-box { background: var(--surface-2); border-radius: 12px; padding: 14px 16px; margin: 10px 0 16px; }
+.tc-sme-verdicts { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 14px; }
+.tc-sme-v { border: 1px solid var(--axis); border-radius: 999px; padding: 7px 14px; cursor: pointer; }
+.tc-sme-v.on { border-color: var(--brand); background: color-mix(in srgb, var(--brand) 10%, transparent); font-weight: 600; }
 
 .tc-bar { display: grid; grid-template-columns: 150px 1fr 52px; gap: 10px; align-items: center; margin: 7px 0; }
 .tc-bar .l { font-size: 12.5px; color: var(--ink-2); }
